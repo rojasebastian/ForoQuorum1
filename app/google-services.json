@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "374403870125",
+    "project_id": "quorum-462c3",
+    "storage_bucket": "quorum-462c3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:374403870125:android:d67ef8b271530677c48524",
+        "android_client_info": {
+          "package_name": "com.example.quorum"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChiP5l-ITMheEUDhw-ObXDnqbVfzfRMio"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
