@@ -47,7 +47,6 @@ class HomeViewModel : ViewModel() {
                 if (snapshot != null) {
                     val postsList = snapshot.documents.mapNotNull { doc ->
                         val post = doc.toObject(Post::class.java)
-                        // Asignar "Química" por defecto si el tema está vacío.
                         val topic = if (post?.topic.isNullOrBlank()) "Química" else post!!.topic
                         post?.copy(id = doc.id, topic = topic)
                     }
@@ -58,7 +57,7 @@ class HomeViewModel : ViewModel() {
             }
     }
 
-    fun addPost(title: String, content: String) {
+    fun addPost(title: String, content: String, topic: String) {
         val currentUser = auth.currentUser ?: return
         val newPost = Post(
             authorEmail = currentUser.email ?: "Anónimo",
@@ -66,7 +65,7 @@ class HomeViewModel : ViewModel() {
             title = title,
             content = content,
             timestamp = Date(),
-            topic = "Química" // Asignar tema por defecto al crear
+            topic = topic
         )
 
         viewModelScope.launch {
@@ -105,11 +104,16 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    fun updatePost(postId: String, newTitle: String, newContent: String) {
+    fun updatePost(postId: String, newTitle: String, newContent: String, topic: String) {
         viewModelScope.launch {
             try {
                 val postRef = db.collection("posts").document(postId)
-                postRef.update("title", newTitle, "content", newContent).await()
+                val updates = mapOf(
+                    "title" to newTitle,
+                    "content" to newContent,
+                    "topic" to topic
+                )
+                postRef.update(updates).await()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al actualizar el post.") }
             }

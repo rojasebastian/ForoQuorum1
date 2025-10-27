@@ -31,6 +31,7 @@ fun FavoritesScreen(
 
     var postToEdit by remember { mutableStateOf<Post?>(null) }
     var postToDelete by remember { mutableStateOf<Post?>(null) }
+    val topics = listOf("Química", "Física", "Astronomía")
 
     Scaffold {
         paddingValues ->
@@ -70,9 +71,10 @@ fun FavoritesScreen(
         postToEdit?.let { post ->
             EditPostDialog(
                 post = post,
+                topics = topics,
                 onDismiss = { postToEdit = null },
-                onConfirm = { title, content ->
-                    homeViewModel.updatePost(post.id, title, content)
+                onConfirm = { title, content, topic ->
+                    homeViewModel.updatePost(post.id, title, content, topic)
                     postToEdit = null
                 }
             )

@@ -1,5 +1,6 @@
 package com.example.quorum.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -106,9 +111,10 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
 
         if (showAddPostDialog) {
             AddPostDialog(
+                topics = topics,
                 onDismiss = { showAddPostDialog = false },
-                onConfirm = { title, content ->
-                    viewModel.addPost(title, content)
+                onConfirm = { title, content, topic ->
+                    viewModel.addPost(title, content, topic)
                     showAddPostDialog = false
                 }
             )
@@ -117,9 +123,10 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
         postToEdit?.let { post ->
             EditPostDialog(
                 post = post,
+                topics = topics,
                 onDismiss = { postToEdit = null },
-                onConfirm = { title, content ->
-                    viewModel.updatePost(post.id, title, content)
+                onConfirm = { title, content, topic ->
+                    viewModel.updatePost(post.id, title, content, topic)
                     postToEdit = null
                 }
             )
@@ -227,11 +234,18 @@ fun PostCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPostDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+fun AddPostDialog(
+    topics: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
-    val isFormValid = title.isNotBlank() && content.isNotBlank()
+    var selectedTopic by remember { mutableStateOf(topics.firstOrNull() ?: "") }
+    var isTopicMenuExpanded by remember { mutableStateOf(false) }
+    val isFormValid = title.isNotBlank() && content.isNotBlank() && selectedTopic.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -240,10 +254,38 @@ fun AddPostDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") }, isError = title.isBlank())
                 OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Contenido (ciencia)...") }, isError = content.isBlank(), modifier = Modifier.height(150.dp))
+                
+                ExposedDropdownMenuBox(
+                    expanded = isTopicMenuExpanded,
+                    onExpandedChange = { isTopicMenuExpanded = !isTopicMenuExpanded }
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        readOnly = true,
+                        value = selectedTopic,
+                        onValueChange = {},
+                        label = { Text("Tema") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTopicMenuExpanded) },
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isTopicMenuExpanded,
+                        onDismissRequest = { isTopicMenuExpanded = false }
+                    ) {
+                        topics.forEach { topic ->
+                            DropdownMenuItem(
+                                text = { Text(topic) },
+                                onClick = {
+                                    selectedTopic = topic
+                                    isTopicMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(title, content) }, enabled = isFormValid) {
+            Button(onClick = { onConfirm(title, content, selectedTopic) }, enabled = isFormValid) {
                 Text("Publicar")
             }
         },
@@ -251,11 +293,19 @@ fun AddPostDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditPostDialog(post: Post, onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+fun EditPostDialog(
+    post: Post,
+    topics: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+) {
     var title by remember(post.title) { mutableStateOf(post.title) }
     var content by remember(post.content) { mutableStateOf(post.content) }
-    val isFormValid = title.isNotBlank() && content.isNotBlank()
+    var selectedTopic by remember(post.topic) { mutableStateOf(post.topic) }
+    var isTopicMenuExpanded by remember { mutableStateOf(false) }
+    val isFormValid = title.isNotBlank() && content.isNotBlank() && selectedTopic.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -264,10 +314,38 @@ fun EditPostDialog(post: Post, onDismiss: () -> Unit, onConfirm: (String, String
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") }, isError = title.isBlank())
                 OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Contenido (ciencia)...") }, isError = content.isBlank(), modifier = Modifier.height(150.dp))
+                
+                ExposedDropdownMenuBox(
+                    expanded = isTopicMenuExpanded,
+                    onExpandedChange = { isTopicMenuExpanded = !isTopicMenuExpanded }
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        readOnly = true,
+                        value = selectedTopic,
+                        onValueChange = {},
+                        label = { Text("Tema") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTopicMenuExpanded) },
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isTopicMenuExpanded,
+                        onDismissRequest = { isTopicMenuExpanded = false }
+                    ) {
+                        topics.forEach { topic ->
+                            DropdownMenuItem(
+                                text = { Text(topic) },
+                                onClick = {
+                                    selectedTopic = topic
+                                    isTopicMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(title, content) }, enabled = isFormValid) {
+            Button(onClick = { onConfirm(title, content, selectedTopic) }, enabled = isFormValid) {
                 Text("Guardar")
             }
         },
@@ -280,7 +358,7 @@ fun DeleteConfirmationDialog(post: Post, onDismiss: () -> Unit, onConfirm: () ->
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Confirmar Borrado") },
-        text = { Text("¿Estás seguro de que quieres borrar el post \"${post.title}\"? Esta acción no se puede deshacer.") },
+        text = { Text("¿Estás seguro de que quieres borrar el post '''${post.title}'''? Esta acción no se puede deshacer.") },
         confirmButton = {
             Button(
                 onClick = onConfirm,

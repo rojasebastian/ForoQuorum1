@@ -36,6 +36,7 @@ import androidx.navigation.NavController
 import com.example.quorum.CommentWithPostInfo
 import com.example.quorum.HomeViewModel
 import com.example.quorum.ProfileViewModel
+import com.example.quorum.data.Post
 
 @Composable
 fun ProfileScreen(
@@ -45,8 +46,9 @@ fun ProfileScreen(
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
 
-    var postToEdit by remember { mutableStateOf<com.example.quorum.data.Post?>(null) }
-    var postToDelete by remember { mutableStateOf<com.example.quorum.data.Post?>(null) }
+    var postToEdit by remember { mutableStateOf<Post?>(null) }
+    var postToDelete by remember { mutableStateOf<Post?>(null) }
+    val topics = listOf("Química", "Física", "Astronomía")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -122,17 +124,26 @@ fun ProfileScreen(
     }
 
     postToEdit?.let {
-        EditPostDialog(it, { postToEdit = null }) { title, content ->
-            homeViewModel.updatePost(it.id, title, content)
-            postToEdit = null
-        }
+        EditPostDialog(
+            post = it,
+            topics = topics,
+            onDismiss = { postToEdit = null },
+            onConfirm = { title, content, topic ->
+                homeViewModel.updatePost(it.id, title, content, topic)
+                postToEdit = null
+            }
+        )
     }
 
     postToDelete?.let {
-        DeleteConfirmationDialog(it, { postToDelete = null }) {
-            homeViewModel.deletePost(it.id)
-            postToDelete = null
-        }
+        DeleteConfirmationDialog(
+            post = it,
+            onDismiss = { postToDelete = null },
+            onConfirm = {
+                homeViewModel.deletePost(it.id)
+                postToDelete = null
+            }
+        )
     }
 }
 
