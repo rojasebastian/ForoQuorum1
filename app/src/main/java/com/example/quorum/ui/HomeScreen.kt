@@ -1,5 +1,6 @@
 package com.example.quorum.ui
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -69,6 +72,8 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
     val filteredPosts = uiState.posts.filter { post ->
         selectedTopic == null || post.topic == selectedTopic
     }
+
+    val context = LocalContext.current
 
     Scaffold(
         floatingActionButton = {
@@ -101,6 +106,15 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
                             onDelete = { postToDelete = it },
                             onToggleFavorite = { postId, favorites ->
                                 viewModel.toggleFavorite(postId, favorites)
+                            },
+                            onShare = { postContent ->
+                                val sendIntent: Intent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, postContent)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, null)
+                                context.startActivity(shareIntent)
                             },
                             navController = navController
                         )
@@ -153,6 +167,7 @@ fun PostList(
     onEdit: (Post) -> Unit,
     onDelete: (Post) -> Unit,
     onToggleFavorite: (String, List<String>) -> Unit,
+    onShare: (String) -> Unit,
     navController: NavController
 ) {
     LazyColumn(
@@ -168,6 +183,7 @@ fun PostList(
                 onDelete = { onDelete(post) },
                 onToggleFavorite = { onToggleFavorite(post.id, post.favorites) },
                 onCommentClick = { navController.navigate("${PostDetailDest.route}/${post.id}") },
+                onShare = { onShare("Mira esta publicación: ${post.title} - ${post.content}") }
             )
         }
     }
@@ -180,6 +196,7 @@ fun PostCard(
     onDelete: () -> Unit,
     onToggleFavorite: () -> Unit,
     onCommentClick: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier
 ) {
     val currentUserId = Firebase.auth.currentUser?.uid
@@ -206,6 +223,14 @@ fun PostCard(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Marcar como favorito",
                         tint = if (isFavorite) MaterialTheme.colorScheme.error else Color.Gray
+                    )
+                }
+
+                IconButton(onClick = onShare) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Compartir",
+                        tint = Color.Gray
                     )
                 }
 

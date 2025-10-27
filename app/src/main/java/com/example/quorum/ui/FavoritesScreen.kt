@@ -1,5 +1,6 @@
 package com.example.quorum.ui
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.quorum.FavoritesViewModel
@@ -32,6 +34,7 @@ fun FavoritesScreen(
     var postToEdit by remember { mutableStateOf<Post?>(null) }
     var postToDelete by remember { mutableStateOf<Post?>(null) }
     val topics = listOf("Química", "Física", "Astronomía")
+    val context = LocalContext.current
 
     Scaffold {
         paddingValues ->
@@ -61,6 +64,15 @@ fun FavoritesScreen(
                         onDelete = { postToDelete = it },
                         onToggleFavorite = { postId, favorites ->
                             homeViewModel.toggleFavorite(postId, favorites)
+                        },
+                        onShare = { postContent ->
+                            val sendIntent: Intent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, postContent)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
                         },
                         navController = navController
                     )
