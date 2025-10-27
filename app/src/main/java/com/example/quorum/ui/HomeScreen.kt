@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +58,13 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
     var postToEdit by remember { mutableStateOf<Post?>(null) }
     var postToDelete by remember { mutableStateOf<Post?>(null) }
 
+    // Lógica para el filtro
+    var selectedTopic by remember { mutableStateOf<String?>(null) }
+    val topics = listOf("Química", "Física", "Astronomía")
+    val filteredPosts = uiState.posts.filter { post ->
+        selectedTopic == null || post.topic == selectedTopic
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddPostDialog = true }) {
@@ -64,24 +72,34 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
             }
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                uiState.isLoading -> CircularProgressIndicator()
-                uiState.error != null -> Text(text = "Error: ${uiState.error}", color = Color.Red)
-                uiState.posts.isEmpty() -> Text(text = "No hay posts. ¡Crea el primero!", fontSize = 18.sp)
-                else -> {
-                    PostList(
-                        posts = uiState.posts,
-                        onEdit = { postToEdit = it },
-                        onDelete = { postToDelete = it },
-                        onToggleFavorite = { postId, favorites ->
-                            viewModel.toggleFavorite(postId, favorites)
-                        },
-                        navController = navController
-                    )
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            // Barra de filtros
+            TopicFilterBar(
+                topics = topics,
+                selectedTopic = selectedTopic,
+                onTopicSelected = { selectedTopic = it }
+            )
+
+            // Contenido principal
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    uiState.isLoading -> CircularProgressIndicator()
+                    uiState.error != null -> Text(text = "Error: ${uiState.error}", color = Color.Red)
+                    uiState.posts.isEmpty() -> Text(text = "No hay posts. ¡Crea el primero!", fontSize = 18.sp)
+                    else -> {
+                        PostList(
+                            posts = filteredPosts, // Usa la lista filtrada
+                            onEdit = { postToEdit = it },
+                            onDelete = { postToDelete = it },
+                            onToggleFavorite = { postId, favorites ->
+                                viewModel.toggleFavorite(postId, favorites)
+                            },
+                            navController = navController
+                        )
+                    }
                 }
             }
         }
@@ -119,6 +137,8 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
         }
     }
 }
+
+// El resto del archivo permanece sin cambios...
 
 @Composable
 fun PostList(
@@ -207,8 +227,6 @@ fun PostCard(
     }
 }
 
-// --- DIÁLOGOS (Sin cambios) ---
-
 @Composable
 fun AddPostDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
     var title by remember { mutableStateOf("") }
@@ -273,4 +291,31 @@ fun DeleteConfirmationDialog(post: Post, onDismiss: () -> Unit, onConfirm: () ->
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
+}
+
+@Composable
+fun TopicFilterBar(
+    topics: List<String>,
+    selectedTopic: String?,
+    onTopicSelected: (String?) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(topics) { topic ->
+            val isSelected = topic == selectedTopic
+            Button(
+                onClick = { onTopicSelected(if (isSelected) null else topic) },
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text(text = topic)
+            }
+        }
+    }
 }

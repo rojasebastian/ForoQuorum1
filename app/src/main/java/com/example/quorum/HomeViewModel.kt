@@ -15,136 +15,103 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
-// Estado del UI para la pantalla principal
 data class HomeUiState(
-    val posts: List<Post> = emptyList(), // La lista de posts
-    val isLoading: Boolean = true, // ¿Está cargando?
-    val error: String? = null // Mensaje de error
+    val posts: List<Post> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null
 )
 
-// El "Cocinero" de la pantalla principal
 class HomeViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // Obtenemos referencias a Auth y Firestore
     private val auth = Firebase.auth
     private val db = Firebase.firestore
 
     init {
-        loadPosts() // Carga los posts apenas se cree el ViewModel
+        loadPosts()
     }
 
-    // --- LECTURA DE DATOS (en tiempo real) ---
     private fun loadPosts() {
-        Log.d("HomeViewModel", "Cargando posts...")
         _uiState.update { it.copy(isLoading = true) }
-
         db.collection("posts")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.w("HomeViewModel", "Error al escuchar posts.", error)
-                    _uiState.update {
-                        it.copy(isLoading = false, error = "Error al cargar posts: ${error.message}")
-                    }
+                    _uiState.update { it.copy(isLoading = false, error = "Error al cargar posts.") }
                     return@addSnapshotListener
                 }
-
                 if (snapshot != null) {
-                    Log.d("HomeViewModel", "Posts recibidos: ${snapshot.size()} documentos")
-                    // Mapeamos los documentos para incluir el ID
-                    val postsList = snapshot.documents.mapNotNull { document ->
-                        document.toObject(Post::class.java)?.copy(id = document.id)
+                    val postsList = snapshot.documents.mapNotNull { doc ->
+                        val post = doc.toObject(Post::class.java)
+                        // Asignar "Química" por defecto si el tema está vacío.
+                        val topic = if (post?.topic.isNullOrBlank()) "Química" else post!!.topic
+                        post?.copy(id = doc.id, topic = topic)
                     }
-                    _uiState.update {
-                        it.copy(isLoading = false, posts = postsList, error = null)
-                    }
+                    _uiState.update { it.copy(isLoading = false, posts = postsList, error = null) }
                 } else {
-                    Log.d("HomeViewModel", "Snapshot es nulo")
                     _uiState.update { it.copy(isLoading = false) }
                 }
             }
     }
 
-    // --- ESCRITURA DE DATOS ---
     fun addPost(title: String, content: String) {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            _uiState.update { it.copy(error = "Debes iniciar sesión para postear") }
-            return
-        }
-
+        val currentUser = auth.currentUser ?: return
         val newPost = Post(
+            authorEmail = currentUser.email ?: "Anónimo",
+            authorId = currentUser.uid,
             title = title,
             content = content,
-            authorEmail = currentUser.email ?: "Anónimo",
-            authorId = currentUser.uid
+            timestamp = Date(),
+            topic = "Química" // Asignar tema por defecto al crear
         )
 
         viewModelScope.launch {
             try {
                 db.collection("posts").add(newPost).await()
-                Log.d("HomeViewModel", "Post agregado con éxito")
             } catch (e: Exception) {
-                Log.w("HomeViewModel", "Error al agregar post", e)
-                _uiState.update { it.copy(error = "Error al crear post: ${e.message}") }
+                _uiState.update { it.copy(error = "Error al crear el post.") }
             }
         }
     }
 
-    // --- BORRADO DE DATOS ---
+    fun toggleFavorite(postId: String, currentFavorites: List<String>) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                val postRef = db.collection("posts").document(postId)
+                val updatedFavorites = if (currentFavorites.contains(userId)) {
+                    FieldValue.arrayRemove(userId)
+                } else {
+                    FieldValue.arrayUnion(userId)
+                }
+                postRef.update("favorites", updatedFavorites).await()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al actualizar favoritos.") }
+            }
+        }
+    }
+
     fun deletePost(postId: String) {
         viewModelScope.launch {
             try {
                 db.collection("posts").document(postId).delete().await()
-                Log.d("HomeViewModel", "Post borrado con éxito: $postId")
             } catch (e: Exception) {
-                Log.w("HomeViewModel", "Error al borrar post", e)
-                _uiState.update { it.copy(error = "Error al borrar el post: ${e.message}") }
+                _uiState.update { it.copy(error = "Error al borrar el post.") }
             }
         }
     }
 
-    // --- ACTUALIZACIÓN DE DATOS ---
     fun updatePost(postId: String, newTitle: String, newContent: String) {
         viewModelScope.launch {
             try {
                 val postRef = db.collection("posts").document(postId)
-                val updates = mapOf(
-                    "title" to newTitle,
-                    "content" to newContent
-                )
-                postRef.update(updates).await()
-                Log.d("HomeViewModel", "Post actualizado con éxito: $postId")
+                postRef.update("title", newTitle, "content", newContent).await()
             } catch (e: Exception) {
-                Log.w("HomeViewModel", "Error al actualizar post", e)
-                _uiState.update { it.copy(error = "Error al actualizar el post: ${e.message}") }
-            }
-        }
-    }
-
-    // --- MANEJO DE FAVORITOS ---
-    fun toggleFavorite(postId: String, currentFavorites: List<String>) {
-        val userId = auth.currentUser?.uid ?: return // No hacer nada si no hay usuario
-
-        viewModelScope.launch {
-            try {
-                val postRef = db.collection("posts").document(postId)
-                if (currentFavorites.contains(userId)) {
-                    // El usuario ya lo tiene en favoritos -> quitarlo
-                    postRef.update("favorites", FieldValue.arrayRemove(userId)).await()
-                    Log.d("HomeViewModel", "Usuario $userId removido de favoritos del post $postId")
-                } else {
-                    // El usuario no lo tiene en favoritos -> agregarlo
-                    postRef.update("favorites", FieldValue.arrayUnion(userId)).await()
-                    Log.d("HomeViewModel", "Usuario $userId agregado a favoritos del post $postId")
-                }
-            } catch (e: Exception) {
-                Log.w("HomeViewModel", "Error al actualizar favoritos", e)
-                _uiState.update { it.copy(error = "Error al actualizar favoritos: ${e.message}") }
+                _uiState.update { it.copy(error = "Error al actualizar el post.") }
             }
         }
     }
