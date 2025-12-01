@@ -1,6 +1,8 @@
 package com.example.quorum.ui
 
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +54,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.quorum.HomeViewModel
 import com.example.quorum.data.Post
@@ -130,6 +134,19 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
                 onConfirm = { title, content, topic ->
                     viewModel.addPost(title, content, topic)
                     showAddPostDialog = false
+
+                    val notificationManager = ContextCompat.getSystemService(context, NotificationManager::class.java) as NotificationManager
+                    val builder = NotificationCompat.Builder(context, "posts_channel")
+                        .setSmallIcon(android.R.drawable.ic_dialog_info) // Icono por defecto
+                        .setContentTitle("¡Post Publicado!")
+                        .setContentText("Tu post '$title' se ha subido correctamente.")
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setAutoCancel(true)
+
+                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                        notificationManager.notify(1, builder.build())
+                    }
                 }
             )
         }
