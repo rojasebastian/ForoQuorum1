@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -51,13 +52,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.quorum.HomeViewModel
+import com.example.quorum.data.Apod
 import com.example.quorum.data.Post
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -102,9 +107,9 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
                 when {
                     uiState.isLoading -> CircularProgressIndicator()
                     uiState.error != null -> Text(text = "Error: ${uiState.error}", color = Color.Red)
-                    uiState.posts.isEmpty() -> Text(text = "No hay posts. ¡Crea el primero!", fontSize = 18.sp)
                     else -> {
                         PostList(
+                            apod = uiState.apod,
                             posts = filteredPosts, // Usa la lista filtrada
                             onEdit = { postToEdit = it },
                             onDelete = { postToDelete = it },
@@ -176,10 +181,34 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
     }
 }
 
-// El resto del archivo permanece sin cambios...
+@Composable
+fun ApodCard(apod: Apod) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(8.dp)
+    ) {
+        Column {
+            AsyncImage(
+                model = apod.url,
+                contentDescription = apod.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
+                contentScale = ContentScale.Crop
+            )
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(text = apod.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "Imagen del día - NASA", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+        }
+    }
+}
 
 @Composable
 fun PostList(
+    apod: Apod?,
     posts: List<Post>,
     onEdit: (Post) -> Unit,
     onDelete: (Post) -> Unit,
@@ -192,6 +221,11 @@ fun PostList(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
+            if (apod != null) {
+                ApodCard(apod = apod)
+            }
+        }
         items(posts) { post ->
             PostCard(
                 modifier = Modifier,

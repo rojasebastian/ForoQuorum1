@@ -3,7 +3,9 @@ package com.example.quorum
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.quorum.data.Apod
 import com.example.quorum.data.Post
+import com.example.quorum.data.RetrofitClient
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
@@ -20,7 +22,8 @@ import java.util.Date
 data class HomeUiState(
     val posts: List<Post> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val apod: Apod? = null
 )
 
 class HomeViewModel : ViewModel() {
@@ -33,6 +36,21 @@ class HomeViewModel : ViewModel() {
 
     init {
         loadPosts()
+        fetchApod()
+    }
+
+    private fun fetchApod() {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.instance.getAstronomyPictureOfTheDay("DEMO_KEY")
+                // Solo mostramos si es imagen (a veces la NASA manda videos)
+                if (response.mediaType == "image") {
+                    _uiState.update { it.copy(apod = response) }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error NASA API", e)
+            }
+        }
     }
 
     private fun loadPosts() {

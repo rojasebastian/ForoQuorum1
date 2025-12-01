@@ -60,6 +60,7 @@ fun FavoritesScreen(
                 else -> {
                     PostList(
                         posts = uiState.posts,
+                        apod = null,
                         onEdit = { postToEdit = it },
                         onDelete = { postToDelete = it },
                         onToggleFavorite = { postId, favorites ->
