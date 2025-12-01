@@ -96,7 +96,7 @@ fun QuorumApp(onSignOut: () -> Unit = {}) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val homeViewModel: HomeViewModel = viewModel()
+    val homeViewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory())
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
